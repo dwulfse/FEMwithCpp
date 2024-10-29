@@ -1,6 +1,7 @@
 #include <iostream>
+#include <vector>
 
-// TODO:
+// Project TODO:
 // - Setup Git repo
 // ~ Setup sparse matrix structure
 // 		X CSR Matrix
@@ -12,18 +13,18 @@
 // - Decide dynamic allocation vs static
 
 // Class Structure:
-// - FE_Mesh
+// ~ FE_Mesh
 //    - mesh coords
 //		- Element objects w/ methods
 // 				- mapping, jacobian
 //     		- quadrature
 //    - boundary conditions?
-// - FE_Solution
+// ~ FE_Solution
 // 		- PGFEM w/ polynomial spaces per element (CG/PG?)
 // 		- solution vector
 //		- polynomial spaces - element dependent (class)
 // 		- DoF handler (routine)
-// - Solver
+// ~ Solver
 //    - Matrix
 //    - direct Linear solver
 //    - nonlinear solver?
@@ -36,12 +37,12 @@ class FE_Mesh
 {
 	public:
 		int n; 	// number of nodes
-		double* nodes; // coordinates of nodes
-		Element* elements; // elements of mesh
-		double** connectivity; // adjacency matrix (??)
-		double** global_stiffness; // global stiffness matrix
+		std::vector<Node> nodes; // coordinates of nodes
+		std::vector<Element> elements; // elements of mesh
+		std::vector<std::vector<double>> connectivity; // adjacency matrix (??)
+		std::vector<std::vector<double>> global_stiffness; // global stiffness matrix
 
-		FE_Mesh(int n, double* nodes, Element* elements)
+		FE_Mesh(int n, std::vector<Node> nodes, std::vector<Element> elements)
 		 : n(n), nodes(nodes), elements(elements)
 		{
 		}
@@ -63,13 +64,6 @@ class FE_Mesh
 
 		~FE_Mesh()
 		{
-			delete[] nodes;
-			delete[] elements;
-			for (int i=0; i<n; i++)
-			{
-				delete[] connectivity[i];
-			}
-			delete[] connectivity;
 		}
 };
 
@@ -81,11 +75,13 @@ class Element
 {
 	public:
 		int id; // element id
-		double* coords; // coordinates of nodes
+		std::vector<double> coords; // coordinates of nodes
+		std::vector<Node> nodes; // node ids
+		std::vector<PolynomialSpace> space; // polynomial space
 		double** stiffness; // local stiffness matrix
 		double** load; // local load vector
 
-		Element(int id, double* coords)
+		Element(int id, std::vector<double> coords)
 		 : id(id), coords(coords)
 		{
 		}
@@ -102,7 +98,23 @@ class Element
 
 		~Element()
 		{
-			delete[] coords;
+		}
+};
+
+class Node
+{
+	public:
+		int id; // node id
+		int n; // number of coordinates
+		std::vector<double> coords; // coordinates of node
+
+		Node(int id, int n, std::vector<double> coords)
+		 : id(id), n(n), coords(coords)
+		{
+		}
+
+		~Node()
+		{
 		}
 };
 
@@ -110,8 +122,40 @@ class PolynomialSpace
 {
 	public:
 		int order; // order of polynomial space
-		// function
-		// derivative
+		std::vector<Node> nodes; // nodes
+
+		double evaluateFunc(int i, double x)
+		{
+			double result = 1.0;
+			for (int j=0; j<order; j++)
+			{
+				if (i != j)
+				{
+					result *= (x - nodes[j].coords[0]) / (nodes[i].coords[0] - nodes[j].coords[0]);
+				}
+			}
+			return result;
+		}
+
+		double evaluateDeriv(int i, double x)
+		{
+			double result = 0.0;
+			for (int j=0; j<order; j++)
+			{
+				if (i != j)
+				{
+					double term = 1.0 / (nodes[i].coords[0] - nodes[j].coords[0]);
+					for (int k=0; k<order; k++)
+					{
+						if (k != i && k!= j)
+						{
+							term *= (x - nodes[i].coords[0]) / (nodes[i].coords[0] - nodes[k].coords[0]);
+						}
+					}
+				}
+			}
+			return result;
+		}
 
 		PolynomialSpace(int order)
 		 : order(order)
@@ -123,9 +167,43 @@ class PolynomialSpace
 		}
 };
 
+class GaussQuadrature
+{
+	public:
+		int n; // number of points
+		std::vector<double> points; // quadrature points
+		std::vector<double> weights; // quadrature weights
+
+		GaussQuadrature(int n, std::vector<double> points, std::vector<double> weights)
+		 : n(n), points(points), weights(weights)
+		{
+		}
+
+		~GaussQuadrature()
+		{
+		}
+};
+
 class FE_Solution
 {
+	public:
+		int n; // number of elements
+		int dim; // dimension of problem
+		FE_Mesh* mesh; // mesh
+		std::vector<Node> nodes; // nodes
+		std::vector<Element> elements; // elements
+		std::vector<double> u; // solution vector
+		// std::vector<PolynomialSpace> space; // polynomial space
 
+		FE_Solution(int n, int dim)
+		 : n(n), dim(dim)
+		{
+		}
+
+		void initialise()
+		{
+			
+		}
 };
 
 class Solver
@@ -165,5 +243,11 @@ class Solver
 
 int main()
 {
+	int n = 8;
+	int dim = 1;
+
+	FE_Solution solution(n, dim);
+	// solution.initialise();
+
 	return 0;
 }
