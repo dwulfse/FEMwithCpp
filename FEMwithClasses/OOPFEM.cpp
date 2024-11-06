@@ -36,8 +36,8 @@
 class FE_Mesh
 {
 	public:
-		int n; 	// number of nodes
-		std::vector<Node> nodes; // coordinates of nodes
+		int n; 	// number of elements
+		std::vector<Node> nodes; // coordinates of n+1 nodes
 		std::vector<Element> elements; // elements of mesh
 		std::vector<std::vector<double>> connectivity; // adjacency matrix (??)
 		std::vector<std::vector<double>> global_stiffness; // global stiffness matrix
@@ -75,20 +75,30 @@ class Element
 {
 	public:
 		int id; // element id
+		int order; // order of polynomial space
 		std::vector<double> coords; // coordinates of nodes
 		std::vector<Node> nodes; // node ids
-		std::vector<PolynomialSpace> space; // polynomial space
+		PolynomialSpace space; // polynomial space
 		double** stiffness; // local stiffness matrix
 		double** load; // local load vector
 
-		Element(int id, std::vector<double> coords)
-		 : id(id), coords(coords)
+		Element(int id, int order, std::vector<double> coords, std::vector<Node> nodes, PolynomialSpace space)
+		 : id(id), order(order), coords(coords), nodes(nodes), space(space)
 		{
 		}
 
 		void getLocalStiffness()
 		{
-
+			int n = nodes.size();
+			stiffness = new double*[n];
+			for (int i=0; i<n; i++)
+			{
+				stiffness[i] = new double[n];
+				for (int j=0; j<n; j++)
+				{
+					stiffness[i][j] = space.evaluateDeriv(i, coords[i]) * space.evaluateDeriv(j, coords[j]) * 0.5 * (coords[j] - coords[i]);
+				}
+			}
 		}
 
 		void getLocalLoad()
@@ -105,11 +115,11 @@ class Node
 {
 	public:
 		int id; // node id
-		int n; // number of coordinates
+		int dim; // number of coordinates ??
 		std::vector<double> coords; // coordinates of node
 
-		Node(int id, int n, std::vector<double> coords)
-		 : id(id), n(n), coords(coords)
+		Node(int id, int dim, std::vector<double> coords)
+		 : id(id), dim(dim), coords(coords)
 		{
 		}
 
@@ -124,10 +134,15 @@ class PolynomialSpace
 		int order; // order of polynomial space
 		std::vector<Node> nodes; // nodes
 
+		PolynomialSpace(int order)
+		 : order(order)
+		{
+		}
+
 		double evaluateFunc(int i, double x)
 		{
 			double result = 1.0;
-			for (int j=0; j<order; j++)
+			for (int j=0; j<order+1; j++)
 			{
 				if (i != j)
 				{
@@ -140,12 +155,12 @@ class PolynomialSpace
 		double evaluateDeriv(int i, double x)
 		{
 			double result = 0.0;
-			for (int j=0; j<order; j++)
+			for (int j=0; j<order+1; j++)
 			{
 				if (i != j)
 				{
 					double term = 1.0 / (nodes[i].coords[0] - nodes[j].coords[0]);
-					for (int k=0; k<order; k++)
+					for (int k=0; k<order+1; k++)
 					{
 						if (k != i && k!= j)
 						{
@@ -155,11 +170,6 @@ class PolynomialSpace
 				}
 			}
 			return result;
-		}
-
-		PolynomialSpace(int order)
-		 : order(order)
-		{
 		}
 
 		~PolynomialSpace()
@@ -185,24 +195,30 @@ class GaussQuadrature
 };
 
 class FE_Solution
+// DoF handler
+// polynomial spaces (per element)
 {
 	public:
 		int n; // number of elements
-		int dim; // dimension of problem
-		FE_Mesh* mesh; // mesh
-		std::vector<Node> nodes; // nodes
-		std::vector<Element> elements; // elements
+		// int dim; // dimension of problem
+		// std::vector<Node> nodes; // nodes
+		// std::vector<Element> elements; // elements
+		// FE_Mesh mesh; // mesh
 		std::vector<double> u; // solution vector
 		// std::vector<PolynomialSpace> space; // polynomial space
 
-		FE_Solution(int n, int dim)
-		 : n(n), dim(dim)
+		FE_Solution(int n)
+		 : n(n)
 		{
 		}
 
 		void initialise()
 		{
-			
+			// create nodes
+
+			// create elements
+			// create mesh
+
 		}
 };
 
@@ -246,8 +262,8 @@ int main()
 	int n = 8;
 	int dim = 1;
 
-	FE_Solution solution(n, dim);
-	// solution.initialise();
+	FE_Solution FEM(n);
+	// FEM.initialise();
 
 	return 0;
 }

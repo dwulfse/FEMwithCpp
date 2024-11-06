@@ -332,11 +332,11 @@ double solve1D(int N, double (*f)(double), double (*u_analytic)(double), double 
 
 	solveSystem(N, A, b, u);
 
-	// std::cout << "Solution: ==============================" << std::endl;
-	// for (int i=0; i<N; i++)
-	// {
-	// 	std::cout << "u(" << i * h << ") = " << u[i] << std::endl;
-	// }
+	std::cout << "Solution: ==============================" << std::endl;
+	for (int i=0; i<N; i++)
+	{
+		std::cout << "u(" << i * h << ") = " << u[i] << std::endl;
+	}
 
 	double error = calculateL2Norm(N, u, u_analytic);
 	std::cout << "Error: " << error << std::endl;
@@ -370,18 +370,18 @@ int main()
 	bool boundary_u0 = true;
 	bool boundary_u1 = true;
 
-	// solve1D(N, f, u_analytic, a, b, c);
+	solve1D(N, f, u_analytic, a, b, c);
 
 	// calculate error against h to file for plotting
-	std::ofstream file("errors.csv");
-	file << "N,error\n";
+	// std::ofstream file("errors.csv");
+	// file << "N,error\n";
 
-	for (int i=3; i<=100; i++)
-	{
-		file << 1.0 /(i - 1) << "," << solve1D(i, f, u_analytic, a, b, c) << "\n";
-	}
+	// for (int i=3; i<=100; i++)
+	// {
+	// 	file << 1.0 /(i - 1) << "," << solve1D(i, f, u_analytic, a, b, c) << "\n";
+	// }
 
-	file.close();
+	// file.close();
 
 	return 0;
 }
