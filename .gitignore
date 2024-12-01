@@ -1,3 +1,4 @@
 .vscode/
 errors.csv
 residuals.csv
+Eigen/
