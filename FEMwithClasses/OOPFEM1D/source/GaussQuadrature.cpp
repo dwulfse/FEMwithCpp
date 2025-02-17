@@ -3,9 +3,18 @@
 #include <cmath>
 
 // TODO:
-// - massive overhaul needed
+// - construct properly from legendre polyonmial roots
+// - accept n in constructor
+// - memoize points and weights
 
+// constructor
 GaussQuadrature::GaussQuadrature()
+ : points(), weights()
+{
+}
+
+// destructor
+GaussQuadrature::~GaussQuadrature()
 {
 }
 

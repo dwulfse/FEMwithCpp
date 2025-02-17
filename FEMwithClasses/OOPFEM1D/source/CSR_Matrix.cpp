@@ -1,6 +1,7 @@
 #include "CSR_Matrix.hpp"
 #include <stdexcept>
 
+// constructors
 CSRMatrix::CSRMatrix()
 {
 }
@@ -15,6 +16,12 @@ CSRMatrix::CSRMatrix(std::vector<double> entries, std::vector<int> col_no, std::
 {
 } // change to copy constructor
 
+// destructor
+CSRMatrix::~CSRMatrix()
+{
+}
+
+// override () operator for read-only indexing
 double& CSRMatrix::operator()(int i, int j)
 {
 	if (i >= row_start.size() - 1 || i < 0 || j >= row_start.size() - 1 || j < 0)
@@ -22,11 +29,11 @@ double& CSRMatrix::operator()(int i, int j)
 		throw std::out_of_range("Index out of range");
 	}
 
-	for (int k=row_start[i]; k<row_start[i+1]; k++)
+	for (int k=row_start.at(i); k<row_start[i+1]; k++)
 	{
-		if (col_no[k] == j)
+		if (col_no.at(k) == j)
 		{
-			return entries[k];
+			return entries.at(k);
 		}
 	}
 

@@ -101,6 +101,17 @@
     "ostream": "cpp",
     "stdexcept": "cpp",
     "streambuf": "cpp",
-    "typeinfo": "cpp"
+    "typeinfo": "cpp",
+    "complex": "cpp",
+    "cstring": "cpp",
+    "ctime": "cpp",
+    "list": "cpp",
+    "map": "cpp",
+    "set": "cpp",
+    "ratio": "cpp",
+    "semaphore": "cpp",
+    "sstream": "cpp",
+    "stop_token": "cpp",
+    "thread": "cpp"
   }
 }

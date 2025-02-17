@@ -36,6 +36,7 @@
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Mesh.cpp",
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Solution.cpp",
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\GaussQuadrature.cpp",
+        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Polynomial.cpp",
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\PolynomialSpace.cpp",
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Solver.cpp",
         "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\main\\main.cpp",
