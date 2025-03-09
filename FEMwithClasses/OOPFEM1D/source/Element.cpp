@@ -1,7 +1,38 @@
 #include "Element.hpp"
+#include <cmath>
 
 // TODO:
 // - nodes are never used, remove and just use p
+
+// helper functions
+double computeTriangleArea(const Point2D &P1, const Point2D &P2, const Point2D &P3)
+{
+	return 0.5 * fabs((P2.x - P1.x) * (P3.y - P1.y) - (P3.x - P1.x) * (P2.y - P1.y));
+}
+
+void computeAffineMatrix(const Point2D &P1, const Point2D &P2, const Point2D &P3, double A[2][2])
+{
+	A[0][0] = P2.x - P1.x;
+	A[0][1] = P3.x - P1.x;
+	A[1][0] = P2.y - P1.y;
+	A[1][1] = P3.y - P1.y;
+}
+
+bool invertAffineMatrix(double A[2][2], double A_inv[2][2])
+{
+	double det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+	if (fabs(det) < 1e-12)
+	{
+		return false;
+	}
+
+	A_inv[0][0] = A[1][1] / det;
+	A_inv[0][1] = -A[0][1] / det;
+	A_inv[1][0] = -A[1][0] / det;
+	A_inv[1][1] = A[0][0] / det;
+
+	return true;
+}
 
 // constructors
 Element::Element()
@@ -55,6 +86,12 @@ std::vector<std::vector<double>> Element::getLocalStiffness()
 	}
 
 	return stiffness;
+}
+
+std::vector<std::vector<double>> Element::getLocalStiffness2D()
+{
+	std::vector<std::vector<double>> stiffness(3, std::vector<double>(3, 0.0));
+	double area = computeTriangleArea({nodes.at(0), 0, 0}, {nodes.at(1), 0, 0}, {nodes.at(2), 0, 0});
 }
 
 std::vector<double> Element::getLocalLoad(double (*f)(double))

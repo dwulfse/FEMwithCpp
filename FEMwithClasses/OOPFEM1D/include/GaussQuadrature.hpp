@@ -15,8 +15,7 @@ class GaussQuadrature
 		// destructor
 		~GaussQuadrature();
 
-		// ** change to accept n in constructor
-		// ** actually find gauss points and weights, not just precomputed.
+		// n in constructor directy less clunky ?
 		void assembleQuadrature(int n);
 };
 

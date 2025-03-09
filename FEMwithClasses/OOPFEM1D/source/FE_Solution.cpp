@@ -1,9 +1,17 @@
 #include "FE_Solution.hpp"
 
 // constructor
-FE_Solution::FE_Solution(int n, int p)
- : n(n), globalStiffness(), globalLoad(p*n+1), solution(p*n+1), mesh(n, p), p(p)
+FE_Solution::FE_Solution(int n, int p, int d)
+ : n(n), globalStiffness(), globalLoad(p*n+1), solution(p*n+1), p(p), d(d)
 {
+	if (d == 1)
+	{
+		mesh = FE_Mesh<double>(n, p);
+	}
+	else if (d == 2)
+	{
+		mesh = FE_Mesh<Point2D>(n, p);
+	}
 }
 
 // destructor
@@ -12,9 +20,16 @@ FE_Solution::~FE_Solution()
 }
 
 // controller function for whole program
-std::vector<double> FE_Solution::solve(double (*f)(double), double u0, double u1, bool boundary_u0, bool boundary_u1)
+std::vector<double> FE_Solution::solve(double (*f)(double), std::string fileNameNoExt, double u0, double u1, bool boundary_u0, bool boundary_u1)
 {
-	mesh.constructMesh();
+	if (d == 1)
+	{
+		mesh.constructMesh();
+	}
+	else if (d == 2)
+	{
+		mesh.parseMesh(fileNameNoExt);
+	}
 	mesh.allocateStiffness();
 	mesh.assembleStiffnessMatrix();
 	mesh.assembleLoadVector(f);
