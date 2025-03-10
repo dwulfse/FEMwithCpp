@@ -25,7 +25,7 @@ int main()
 	const int dimension = 1; // dimension
 	auto f = [](double x) { return M_PI * M_PI * sin(M_PI * x); }; // RHS function
 	auto f_analytic = [](double x) { return sin(M_PI * x); }; // analytic solution
-
+	std::vector<double> solution;
 	std::string filenameNoExt = "domain.3";
 
 	// boundary conditions
@@ -37,24 +37,24 @@ int main()
 	FE_Solution FEM(n, polynomialDegree, dimension);
 	if (dimension == 1)
 	{
-		std::vector<double> solution = FEM.solve(f);
+		solution = FEM.solve(f);
 	}
 	else if (dimension == 2)
 	{
-		std::vector<double> solution = FEM.solve(f, filenameNoExt);
+		solution = FEM.solve(f, filenameNoExt);
 	}
 
 	std::cout << "u vector: " << std::endl;
 	for (int i=0; i<polynomialDegree*n+1; i++)
 	{
-		std::cout << "u" << i << " = " << solution.at(i) << std::endl;
+		std::cout << "u" << i << " = " << solution[i] << std::endl;
 	}
 
 	std::cout << "Solution:" << std::endl;
 	for (int i=0; i<5; i++)
 	{
 		double x = i / 4.0;
-		std::cout << "u_h(" << x << ") = " << FEM.evaluateSolution(x) << std::endl;
+		std::cout << "u_h(" << x << ") = " << FEM.evaluateSolution({x}) << std::endl;
 	}
 	// should be [0, 0.09375, 0.125, 0.09375, 0]
 

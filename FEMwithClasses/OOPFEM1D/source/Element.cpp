@@ -90,8 +90,10 @@ std::vector<std::vector<double>> Element::getLocalStiffness()
 
 std::vector<std::vector<double>> Element::getLocalStiffness2D()
 {
-	std::vector<std::vector<double>> stiffness(3, std::vector<double>(3, 0.0));
-	double area = computeTriangleArea({nodes.at(0), 0, 0}, {nodes.at(1), 0, 0}, {nodes.at(2), 0, 0});
+	// std::vector<std::vector<double>> stiffness(3, std::vector<double>(3, 0.0));
+	// double area = computeTriangleArea({nodes.at(0), 0, 0}, {nodes.at(1), 0, 0}, {nodes.at(2), 0, 0});
+	// FIXME: implement
+	return std::vector<std::vector<double>>();
 }
 
 std::vector<double> Element::getLocalLoad(double (*f)(double))
