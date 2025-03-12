@@ -14,30 +14,34 @@ Solver::~Solver()
 
 void Solver::setupEigen()
 {
-	EigenA.resize(p*n+1, p*n+1);
-	Eigenb.resize(p*n+1);
+	int noNodes = b.size(); 	// was p*n + 1
+	EigenA.resize(noNodes, noNodes);
+	Eigenb.resize(noNodes);
 
 	std::vector<Eigen::Triplet<double>> triplets;
-	for (int i=0; i<p*n+1; i++) ///////////
+	for (int i=0; i<noNodes; i++) ///////////
 	{
-		for (int j=A.row_start.at(i); j<A.row_start[i+1]; j++)
+		for (int j=A.row_start[i]; j<A.row_start[i+1]; j++)
 		{
-			triplets.emplace_back(Eigen::Triplet<double>(i, A.col_no.at(j), A.entries.at(j)));
+			triplets.emplace_back(Eigen::Triplet<double>(i, A.col_no[j], A.entries[j]));
 		}
 	}
 
 	// log triplets
 	// for (int i=0; i<triplets.size(); i++)
 	// {
-	// 	std::cout << "triplets[" << i << "] = (" << triplets.at(i).row() << ", " << triplets.at(i).col() << ", " << triplets.at(i).value() << ")" << std::endl;
+	// 	std::cout << "triplets[" << i << "] = (" << triplets[i].row() << ", " << triplets[i].col() << ", " << triplets[i].value() << ")" << std::endl;
 	// }
 
 	EigenA.setFromTriplets(triplets.begin(), triplets.end()); // problem for now
 	EigenA.makeCompressed();
 
-	for (int i=0; i<p*n+1; i++)
+	std::cout << "Eigen compressed matrix: " << std::endl;
+	std::cout << EigenA << std::endl;
+
+	for (int i=0; i<noNodes; i++)
 	{
-		Eigenb(i) = b.at(i);
+		Eigenb(i) = b[i];
 	}
 }
 
@@ -54,9 +58,9 @@ std::vector<double> Solver::solveEigen()
 	Eigen::VectorXd solution = solver.solve(Eigenb);
 
 	// convert Eigen::VectorXd to std::vector<double> u
-	for (int i=0; i<p*n+1; i++)
+	for (int i=0; i<b.size(); i++)
 	{
-		u.at(i) = solution(i);
+		u[i] = solution(i);
 	}
 
 	return u;

@@ -9,7 +9,7 @@ class FE_Mesh1D : public FE_Mesh
 		std::vector<double> nodes;
 
 		// constructors
-		FE_Mesh1D(int n, int p);
+		FE_Mesh1D(int n, int p, int d);
 		FE_Mesh1D();
 
 		// destructor
@@ -17,12 +17,10 @@ class FE_Mesh1D : public FE_Mesh
 
 		// methods
 		virtual std::vector<double> getNode(int i) override;
+		virtual int getNoNodes() override;
 		virtual void constructMesh(std::string filename = "") override;
 		virtual double evaluateSolution(std::vector<double> x, std::vector<double> solution) override;
-		// virtual void allocateStiffness() override;
-		// virtual void assembleStiffnessMatrix() override;
-		// virtual void assembleLoadVector(double (*f)(double)) override;
-		// virtual void applyBoundaryConditions(double u0, double u1, bool boundary_u0, bool boundary_u1) override;
+		virtual void applyBoundaryConditions(double u0, double u1, bool boundary_u0, bool boundary_u1) override;
 };
 
 #endif

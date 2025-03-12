@@ -11,13 +11,13 @@
 // non-zero entries will be
 void FE_Mesh::allocateStiffness()
 {
-	int no_nodes = p*n + 1;
+	int no_nodes = getNoNodes();
 	std::vector<int> nnz_per_row(no_nodes, 0); // not so sure about p*n + 1 but its excess
 	// std::vector<int> DoF(p+1); // hp-fem - change !!
 
-	for (int k=0; k<n; k++) // for each element
+	for (int k=0; k<elements.size(); k++) // for each element
 	{
-		const std::vector<int>& DoF = elements.at(k).local_DoF;
+		const std::vector<int>& DoF = elements[k]->local_DoF;
 		for (int j=0; j<DoF.size(); j++) // for each connection
 		{
 			nnz_per_row[DoF[j]] += DoF.size();
@@ -36,100 +36,81 @@ void FE_Mesh::allocateStiffness()
 
 	std::vector<int> row_start_copy = stiffness.row_start; // should use reference? maybe?
 
-	for (int k=0; k<n; k++)
+	for (int k=0; k<elements.size(); k++)
 	{
-		std::vector<int>& DoF = elements.at(k).local_DoF;
+		std::vector<int>& DoF = elements[k]->local_DoF;
 		for (int i=0; i<DoF.size(); i++)
 		{
 			for (int j=0; j<DoF.size(); j++)
 			{
-				// std::cout << "i=" << i << ", j=" << j << "\nDoF.at(i)=" << DoF.at(i) << ", DoF.at(j)=" << DoF.at(j) << "\nrow_start_copy.at(DoF.at(i))=" << row_start_copy[DoF.at(i)] << std::endl;
-				stiffness.col_no[row_start_copy[DoF[i]]++] = DoF[j];
+				int row = DoF[i];
+				int pos = row_start_copy[row];
+				if (pos >= stiffness.row_start[row+1])
+				{
+					std::cerr << "Error: row " << row << " insertion index " << pos
+							  << " exceeds allocated range ["
+							  << stiffness.row_start[row] << ", "
+							  << stiffness.row_start[row+1] << ")\n";
+					throw std::runtime_error("CSR assembly index out of range");
+				}
+				stiffness.col_no[pos] = DoF[j];
+				row_start_copy[row]++;
 			}
 		}
 	}
+
+	std::cout << "Stiffness matrix: " << std::endl;
+	stiffness.print(true);
 }
 
 // find each element's local stiffness and construct global stiffness using each
 // element's DoFs
 void FE_Mesh::assembleStiffnessMatrix()
 {
-	std::vector<std::vector<double>> local_stiffness(p+1, std::vector<double>(p+1, 0)); // changes needed for hp-fem
-	std::vector<int> globalDoF(p+1);
+	int noLocalDoFs = d == 1 ? p+1 : (p+1)*(p+2)/2;
+	std::vector<std::vector<double>> local_stiffness(noLocalDoFs, std::vector<double>(noLocalDoFs, 0)); // changes needed for hp-fem
+	std::vector<int> globalDoF(noLocalDoFs);
 
 	for (int k=0; k<n; k++)
 	{
-		local_stiffness = elements.at(k).getLocalStiffness();
-		globalDoF = elements.at(k).local_DoF;
+		local_stiffness = elements[k]->getLocalStiffness();
+		globalDoF = elements[k]->local_DoF;
 		// handle DoF
-		for (int i=0; i<p+1; i++)
+		for (int i=0; i<noLocalDoFs; i++)
 		{
-			for (int j=0; j<p+1; j++)
+			for (int j=0; j<noLocalDoFs; j++)
 			{
-				stiffness(globalDoF.at(i), globalDoF.at(j)) += local_stiffness.at(i).at(j);
+				stiffness(globalDoF[i], globalDoF[j]) += local_stiffness[i][j];
 			}
 		}
 	}
+
+	std::cout << "Stiffness matrix: " << std::endl;
+	stiffness.print(false);
 }
 
 // find each element's local load and construct global load using each
 // element's DoFs
-void FE_Mesh::assembleLoadVector(double (*f)(double))
+void FE_Mesh::assembleLoadVector(double (*f)(const std::vector<double>&))
 {
-	std::vector<double> local_load(p+1); // changes needed for hp-fem
-	std::vector<int> globalDoF(p+1);
+	int noLocalDoFs = d == 1 ? p+1 : (p+1)*(p+2)/2;
+	std::vector<double> local_load(noLocalDoFs); // changes needed for hp-fem
+	std::vector<int> globalDoF(noLocalDoFs);
 
 	for (int k=0; k<n; k++)
 	{
-		local_load = elements.at(k).getLocalLoad(f);
-		globalDoF = elements.at(k).local_DoF;
+		local_load = elements[k]->getLocalLoad(f);
+		globalDoF = elements[k]->local_DoF;
 		// handle DoF
-		for (int i=0; i<p+1; i++)
+		for (int i=0; i<noLocalDoFs; i++)
 		{
-			load.at(globalDoF.at(i)) += local_load.at(i);
+			load[globalDoF[i]] += local_load[i];
 		}
 	}
-}
 
-// apply left and right boundary conditions
-// FIXME: generalize to 2D ??
-void FE_Mesh::applyBoundaryConditions(double u0, double u1, bool boundary_u0, bool boundary_u1)
-{
-	if (boundary_u0)
+	std::cout << "Load vector: " << std::endl;
+	for (int i=0; i<load.size(); i++)
 	{
-		for (int i=stiffness.row_start.at(0); i<stiffness.row_start.at(1); i++)
-		{
-			stiffness.entries.at(i) = 0.0;
-		}
-
-		for (int i=1; i<stiffness.col_no.size(); i++) // probably inefficient, revisit
-		{
-			if (stiffness.col_no.at(i) == 0)
-			{
-				stiffness.entries.at(i) = 0.0;
-			}
-		}
-
-		stiffness(0, 0) = 1.0;
-		load.at(0) = u0;
-	}
-
-	if (boundary_u1)
-	{
-		for (int i=stiffness.row_start.at(n); i<stiffness.row_start.at(n+1); i++)
-		{
-			stiffness.entries.at(i) = 0.0;
-		}
-
-		for (int i=0; i<stiffness.col_no.size(); i++) // probably inefficient, revisit
-		{
-			if (stiffness.col_no.at(i) == n)
-			{
-				stiffness.entries.at(i) = 0.0;
-			}
-		}
-
-		stiffness(n, n) = 1.0;
-		load.at(n) = u1;
+		std::cout << load[i] << std::endl;
 	}
 }

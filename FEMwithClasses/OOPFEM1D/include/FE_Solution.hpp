@@ -27,7 +27,7 @@ class FE_Solution
 		// destructor
 		~FE_Solution();
 		
-		std::vector<double> solve(double (*f)(double), std::string fileNameNoExt="", double u0=0.0, double u1=0.0, bool boundary_u0=true, bool boundary_u1=true);
+		std::vector<double> solve(double (*f)(const std::vector<double>&), std::string fileNameNoExt="", double u0=0.0, double u1=0.0, bool boundary_u0=true, bool boundary_u1=true);
 		double evaluateSolution(std::vector<double> x);
 		double getL2Error(double (*f_analytic)(double));
 		double getL2Error(double (*f_analytic)(const std::vector<double>&));

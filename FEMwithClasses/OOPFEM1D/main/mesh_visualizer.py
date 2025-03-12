@@ -99,8 +99,8 @@ def plot_mesh(nodes, elements):
 
 def main():
     # Change these filenames to match your output files from Triangle.
-    node_filename = "C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.3.node"
-    ele_filename = "C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.3.ele"
+    node_filename = "C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.1.node"
+    ele_filename = "C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.1.ele"
 
     nodes = read_node_file(node_filename)
     elements = read_ele_file(ele_filename)

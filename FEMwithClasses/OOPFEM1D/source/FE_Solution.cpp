@@ -1,18 +1,21 @@
 #include "FE_Solution.hpp"
 #include "FE_Mesh1D.hpp"
 #include "FE_Mesh2D.hpp"
+#include "GaussQuadrature.hpp"
 
 // constructor
 FE_Solution::FE_Solution(int n, int p, int d)
- : n(n), globalStiffness(), globalLoad(p*n+1), solution(p*n+1), p(p), d(d)
+ : n(n), globalStiffness(), p(p), d(d)
 {
 	if (d == 1)
 	{
-		mesh = std::make_unique<FE_Mesh1D>(n, p);
+		mesh = std::make_unique<FE_Mesh1D>(n, p, d);
+		globalLoad.resize(p*n+1);
+		solution.resize(p*n+1);
 	}
 	else if (d == 2)
 	{
-		mesh = std::make_unique<FE_Mesh2D>(n, p);
+		mesh = std::make_unique<FE_Mesh2D>(n, p, d);
 	}
 }
 
@@ -22,7 +25,7 @@ FE_Solution::~FE_Solution()
 }
 
 // controller function for whole program
-std::vector<double> FE_Solution::solve(double (*f)(double), std::string fileNameNoExt, double u0, double u1, bool boundary_u0, bool boundary_u1)
+std::vector<double> FE_Solution::solve(double (*f)(const std::vector<double>&), std::string fileNameNoExt, double u0, double u1, bool boundary_u0, bool boundary_u1)
 {
 	mesh->constructMesh(d == 2 ? fileNameNoExt : "");
 	mesh->allocateStiffness();
@@ -30,11 +33,15 @@ std::vector<double> FE_Solution::solve(double (*f)(double), std::string fileName
 	mesh->assembleLoadVector(f);
 	mesh->applyBoundaryConditions(u0, u1, boundary_u0, boundary_u1);
 
+	int noNodes = mesh->getNoNodes();
+	globalLoad.resize(noNodes);
+	solution.resize(noNodes);
+
 	globalStiffness = mesh->stiffness;
 	globalLoad = mesh->load;
+	n = mesh->n;
 
 	Solver solver(n, p, globalStiffness, globalLoad, solution);
-	// solution = solver.solveSystem();
 
 	solver.setupEigen();
 	solution = solver.solveEigen();
