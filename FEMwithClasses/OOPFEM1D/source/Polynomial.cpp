@@ -37,26 +37,6 @@ double legendre_deriv(int i, double x)
 	}
 }
 
-// double legendre_second_deriv(int i, double x)
-// {
-// 	if (i == 0)
-// 	{
-// 		return 0.0;
-// 	}
-// 	else if (i == 1)
-// 	{
-// 		return 0.0;
-// 	}
-// 	else
-// 	{
-// 		return (i / (1.0 - x * x)) * (2 * x * legendre_deriv(i, x) - 2 * legendre(i - 1, x));
-// 	}
-// }
-
-// consider also:
-// l(i, x) = i * (L(i-1, x) - x * L(i, x))
-// l'(i,x) = i * (L'(i-1, x) - L(i, x) - x * L'(i, x))
-
 double lobatto(int i, double x)
 {
 	if (i == 0)

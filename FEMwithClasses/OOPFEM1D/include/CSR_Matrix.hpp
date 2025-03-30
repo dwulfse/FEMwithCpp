@@ -20,6 +20,7 @@ class CSRMatrix
 
 		// override () operator for read-only indexing
 		double& operator()(int i, int j);
+		void print(bool sparcity=false);
 };
 
 #endif

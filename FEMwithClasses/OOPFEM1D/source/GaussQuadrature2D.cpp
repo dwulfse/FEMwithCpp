@@ -29,8 +29,11 @@ void GaussQuadrature2D::assembleQuadrature(int n)
 		{
 			double u = 0.5 * (quad.points[i] + 1.0);
 			double v = 0.5 * (quad.points[j] + 1.0);
-			points[index] = {2.0 * u * (1.0 - v) - 1.0, 2.0 * v - 1.0};
-			weights[index] = quad.weights[i] * quad.weights[j] * ((1.0 - quad.points[j]) / 2.0);
+			Point2D point;
+			point.x = 2.0 * u * (1.0 - v) - 1.0;
+			point.y = 2.0 * v - 1.0;
+			points[index] = point;
+			weights[index] = quad.weights[i] * quad.weights[j] * (1.0 - v);
 			index ++;
 		}
 	}
