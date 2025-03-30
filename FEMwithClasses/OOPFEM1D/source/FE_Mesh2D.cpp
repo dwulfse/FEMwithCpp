@@ -8,13 +8,19 @@
 // TODO:
 // - account for extra DoFs in higher order elements
 
+// make pairs of ORDERED edges based on two vertices
+std::pair<int, int> makeEdgePair(int i, int j)
+{
+	return i < j ? std::make_pair(i, j) : std::make_pair(j, i);
+}
+
 // constructors
 FE_Mesh2D::FE_Mesh2D() // maybe initialise all to 0
 {
 }
 
 FE_Mesh2D::FE_Mesh2D(int n, int p, int d)
- : FE_Mesh(n, p, d), nodes(p*n+1, {0, 0.0, 0.0}), boundary_nodes(0)
+ : FE_Mesh(n, p, d), nodes(0), is_boundary(0), edge_dofs()
 {
 }
 
@@ -29,17 +35,22 @@ std::vector<double> FE_Mesh2D::getNode(int i)
 	return { nodes[i].x, nodes[i].y };
 }
 
-// get number of nodes
+// get number of DoFs
 int FE_Mesh2D::getNoNodes()
 {
-	return nodes.size();	// TODO: update when p>1 implemented
+	// no. DoFs = [no. vertices] + (p - 1) [no. edges] + (p - 1)(p - 2)/2 [no. bubbles]
+	return nodes.size() +
+		(p - 1) * edge_dofs.size() +
+		(p - 1) * (p - 2) / 2 * n;
+	// return nodes.size();
 }
 
 // load mesh from Triangle generated files
 void FE_Mesh2D::constructMesh(std::string filename)
 {
-	std::ifstream eleFile("C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.1.ele");
-	std::ifstream nodeFile("C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.1.node");
+	// open files
+	std::ifstream eleFile("C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.3.ele");
+	std::ifstream nodeFile("C:/Users/dylan/OneDrive/Documents/uni_work/FEMwithCPP/Code/FEMwithClasses/OOPFEM1D/main/domain.3.node");
 
 	if (!eleFile.good() || !nodeFile.good())
 	{
@@ -58,8 +69,10 @@ void FE_Mesh2D::constructMesh(std::string filename)
 	int noVertices, dimension, noAttributesNode, boundary;
 	nodeHeader >> noVertices >> dimension >> noAttributesNode >> boundary;
 
+	// resize vectors to number of vertices
 	nodes.resize(noVertices);
 	load.resize(noVertices, 0.0);
+	is_boundary.resize(noVertices);
 
 	// read nodes
 	while (std::getline(nodeFile, line))
@@ -68,6 +81,7 @@ void FE_Mesh2D::constructMesh(std::string filename)
 		std::istringstream iss(line);
 		Point2D node;
 		int boundary_flag;
+		// line format: id x y [boundary_flag]
 		if (!(iss >> node.id >> node.x >> node.y >> boundary_flag))
 		{
 			std::cerr << "Couldn't read node file line: " << line << std::endl;
@@ -82,22 +96,13 @@ void FE_Mesh2D::constructMesh(std::string filename)
 		nodes[node.id] = node;
 		if (boundary_flag == 1)
 		{
-			boundary_nodes.push_back(node.id);
+			is_boundary[node.id] = true;
+		}
+		else
+		{
+			is_boundary[node.id] = false;
 		}
 	}
-
-	std::cout << "Nodes: " << std::endl;
-	for (int i=0; i<noVertices; i++)
-	{
-		std::cout << nodes[i].id << " " << nodes[i].x << " " << nodes[i].y << std::endl;
-	}
-
-	std::cout << "boundary_nodes: " << std::endl;
-	for (int i=0; i<boundary_nodes.size(); i++)
-	{
-		std::cout << boundary_nodes[i] << " ";
-	}
-	std::cout << std::endl;
 
 	// read element header
 	std::getline(eleFile, line);
@@ -113,17 +118,30 @@ void FE_Mesh2D::constructMesh(std::string filename)
 		throw std::runtime_error("Only triangles supported");
 	}
 
+	// in 2D, n (number of elements) read from file
+	// resize elements vector
 	n = noElems;
 	elements.resize(noElems);
+	is_boundary.resize(noVertices + (p-1) * (3 * n + noVertices - 3) / 2 + (p-1) * (p-2) * n / 2, false);
+	// + (p-1)(p-2)/2 n, but bubble nodes not on edge
+
+	int DoFi = noVertices; // start of extra DoFs indexing
+
+	int nDoFs = (p+1) * (p+2) / 2; // number of DoFs per element
+	int nBubbleDoFs = (p-1) * (p-2) / 2; // number of bubble DoFs per element
 
 	// read elements
-	std::vector<int> local_dofs(noNodesElem);
+	// setup element nodes and local DoFs to populate for each element
+	// local DoFs will hold vertex (connecivity), edge, and bubble DoFs
+	std::vector<int> local_dofs(nDoFs);
 	std::vector<Point2D> element_nodes(noNodesElem);
 	int id;
 	while(std::getline(eleFile, line))
 	{
 		if (line.empty() || line[0] == '#') continue;
 		std::istringstream iss(line);
+		// line format: id n1 n2 n3 [attribute]
+		// read in element id
 		if (!(iss >> id))
 		{
 			std::cerr << "Couldn't read element id from line" << line << std::endl;
@@ -135,35 +153,73 @@ void FE_Mesh2D::constructMesh(std::string filename)
 			std::cerr << "Element id " << id << " out of range" << std::endl;
 			continue;
 		}
+		// noNodesElem = 3 for triangular elements
+		// read connectivity
+		double connectivity[3];
 		for (int i=0; i<noNodesElem; i++)
 		{
-			if (!(iss >> local_dofs[i]))
+			if (!(iss >> connectivity[i]))
 			{
 				std::cerr << "Couldn't read local dof for element " << id+1 << " from line" << line << std::endl;
 				break;
 			}
-			local_dofs[i]--; // 0-indexed
-			if (local_dofs[i] < 0 || local_dofs[i] >= noVertices)
+			connectivity[i]--; // 0-indexed
+			if (connectivity[i] < 0 || connectivity[i] >= noVertices)
 			{
-				std::cerr << "Local dof " << local_dofs[i] << " out of range" << std::endl;
+				std::cerr << "Local dof " << connectivity[i] << " out of range" << std::endl;
 				break;
 			}
-			element_nodes[i] = nodes[local_dofs[i]];
+			element_nodes[i] = nodes[connectivity[i]];
 		}
+
+		// add vertex DoFs
+		for (int i=0; i<noNodesElem; i++)
+		{
+			local_dofs[i] = connectivity[i];
+		}
+
+		// add edge DoFs
+		for (int i=0; i<noNodesElem; i++)
+		{
+			int j = (i+1) % noNodesElem;
+			int v1 = local_dofs[i], v2 = local_dofs[j];
+
+			std::pair<int, int> edge = makeEdgePair(v1, v2);
+			std::vector<int> dof(p-1);
+			if (edge_dofs.find(edge) == edge_dofs.end())
+			{
+				dof.resize(p - 1);
+				for (int k=0; k<p-1; k++)
+				{
+					is_boundary[DoFi] = is_boundary.at(v1) && is_boundary.at(v2);
+					dof[k] = DoFi++;
+				}
+				edge_dofs[edge] = dof;
+			}
+			else
+			{
+				dof = edge_dofs[edge];
+			}
+
+			int edge_i = 3 + i * (p - 1);
+			for (int k=0; k<p-1; k++)
+			{
+				local_dofs[edge_i + k] = dof[k];
+			}
+		}
+
+		// add bubble DoFs
+		int bubble_i = 3 + 3 * (p - 1);
+		for (int i=0; i<nBubbleDoFs; i++)
+		{
+			is_boundary[DoFi] = false;
+			local_dofs[bubble_i + i] = DoFi++;
+		}
+		// set Element to be type Element2D with read in DoFs and nodes
 		elements[id] = std::make_unique<Element2D>(id, p, local_dofs, element_nodes);
 	}
 
-	std::cout << "Elements: " << std::endl;
-	for (int i=0; i<noElems; i++)
-	{
-		std::cout << "id: " << elements[i]->id << " \tDoF: ";
-		for (int j=0; j<noNodesElem; j++)
-		{
-			std::cout << elements[i]->local_DoF[j] << " ";
-		}
-		std::cout << std::endl;
-	}
-
+	// close files
 	eleFile.close();
 	nodeFile.close();
 }
@@ -173,22 +229,39 @@ double FE_Mesh2D::evaluateSolution(std::vector<double> x, std::vector<double> so
 {
 	for (int i=0; i<elements.size(); i++)
 	{
-		std::vector<int> elem_dof = elements[i]->local_DoF;
-		Point2D P = nodes[elem_dof[0]], Q = nodes[elem_dof[1]], R = nodes[elem_dof[2]];
-		double det = (Q.x - P.x) * (R.y - P.y) - (R.x - P.x) * (Q.y - P.y);
+		Element2D* elem = dynamic_cast<Element2D*>(elements[i].get());
+		PolynomialSpace poly = elem->poly;
+		const std::vector<int>& elem_dof = elem->local_DoF;
+		Point2D P = elem->nodes[0], Q = elem->nodes[1], R = elem->nodes[2];
 
-		std::vector<double> xi(3, 0.0);
-		xi[0] = ((Q.x - x[0]) * (R.y - x[1]) - (R.x - x[0]) * (Q.y - x[1])) / det;
-		xi[1] = ((R.x - x[0]) * (P.y - x[1]) - (P.x - x[0]) * (R.y - x[1])) / det;
-		xi[2] = 1.0 - xi[0] - xi[1];
+		double A[2][2];
+		computeAffineMatrix(P, Q, R, A);
 
-		// check if x in triangle
-		if (xi[0] >= -1e-12 && xi[1] >= -1e-12 && xi[2] >= -1e-12)
+		double A_inv[2][2];
+		if (!invertAffineMatrix(A, A_inv))
+		{
+			std::runtime_error("Singular transformation matrix");
+			continue;
+		}
+
+		double xi1 = 2.0 * (A_inv[0][0] * (x[0] - P.x) + A_inv[0][1] * (x[1] - P.y)) - 1.0;
+		double xi2 = 2.0 * (A_inv[1][0] * (x[0] - P.x) + A_inv[1][1] * (x[1] - P.y)) - 1.0;
+
+		if (xi1 < -1.0 || xi1 > 1.0 || xi2 < -1.0 || xi2 > 1.0)
+		{
+			continue;
+		}
+
+		double lambda[3];
+		poly.evaluate_affine(xi1, xi2, lambda);
+
+		if (lambda[0] >= -1e-12 && lambda[1] >= -1e-12 && lambda[2] >= -1e-12)
 		{
 			double u_val = 0.0;
-			for (int j=0; j<3; j++)
+			for (int j=0; j<elem_dof.size(); j++)
 			{
-				u_val += solution[elem_dof[j]] * xi[j];
+				double phi = poly.basis_2D(j, xi1, xi2);
+				u_val += solution[elem_dof[j]] * phi;
 			}
 			return u_val;
 		}
@@ -201,156 +274,32 @@ void FE_Mesh2D::applyBoundaryConditions(double u_val, double /*unused*/, bool ap
 {
 	if (!apply_boundary) return;
 
-	for (int k=0; k<boundary_nodes.size(); k++)
+	for (int k=0; k<is_boundary.size(); k++)
 	{
-		// zero out row
-		int index = boundary_nodes[k];
-		for (int i=stiffness.row_start[index]; i<stiffness.row_start[index+1]; i++)
+		if (is_boundary[k])
 		{
-			stiffness.entries[i] = 0.0;
-		}
-
-		// zero out column
-		for (int i=0; i<stiffness.row_start.size(); i++)
-		{
-			for (int j=stiffness.row_start[i]; j<stiffness.row_start[i+1]; j++)
+			// zero out row
+			for (int i=stiffness.row_start[k]; i<stiffness.row_start[k+1]; i++)
 			{
-				if (stiffness.col_no[j] == index)
+				stiffness.entries[i] = 0.0;
+			}
+
+			// zero out column
+			for (int i=0; i<stiffness.row_start.size(); i++)
+			{
+				for (int j=stiffness.row_start[i]; j<stiffness.row_start[i+1]; j++)
 				{
-					stiffness.entries[j] = 0.0;
+					if (stiffness.col_no[j] == k)
+					{
+						stiffness.entries[j] = 0.0;
+					}
 				}
 			}
-		}
 
-		// set diagonal to 1
-		stiffness(index, index) = 1.0;
-		// set load vector to boundary value
-		load[index] = u_val;
+			// set diagonal to 1
+			stiffness(k, k) = 1.0;
+			// set load vector to boundary value
+			load[k] = u_val;
+		}
 	}
 }
-
-// // algorithm to allocate space for CSR stiffness matrix based on where
-// // non-zero entries will be
-// void FE_Mesh2D::allocateStiffness()
-// {
-// 	int no_nodes = p*n + 1;
-// 	std::vector<int> nnz_per_row(no_nodes, 0); // not so sure about p*n + 1 but its excess
-// 	// std::vector<int> DoF(p+1); // hp-fem - change !!
-
-// 	for (int k=0; k<n; k++) // for each element
-// 	{
-// 		const std::vector<int>& DoF = elements[k].local_DoF;
-// 		for (int j=0; j<DoF.size(); j++) // for each connection
-// 		{
-// 			nnz_per_row[DoF[j]] += DoF.size();
-// 		}
-// 	}
-
-// 	stiffness.row_start.resize(no_nodes + 1, 0);
-// 	for (int i=1; i<no_nodes + 1; i++) // for each node (row)
-// 	{
-// 		stiffness.row_start[i] = stiffness.row_start[i-1] + nnz_per_row[i-1];
-// 	}
-
-// 	int nnz = stiffness.row_start.back();
-// 	stiffness.entries.resize(nnz, 0.0);
-// 	stiffness.col_no.resize(nnz, 0);
-
-// 	std::vector<int> row_start_copy = stiffness.row_start; // should use reference? maybe?
-
-// 	for (int k=0; k<n; k++)
-// 	{
-// 		std::vector<int>& DoF = elements[k].local_DoF;
-// 		for (int i=0; i<DoF.size(); i++)
-// 		{
-// 			for (int j=0; j<DoF.size(); j++)
-// 			{
-// 				// std::cout << "i=" << i << ", j=" << j << "/nDoF[i]=" << DoF[i] << ", DoF[j]=" << DoF[j] << "\nrow_start_copy[DoF[i]]=" << row_start_copy[DoF[i]] << std::endl;
-// 				stiffness.col_no[row_start_copy[DoF[i]]++] = DoF[j];
-// 			}
-// 		}
-// 	}
-// }
-
-// // find each element's local stiffness and construct global stiffness using each
-// // element's DoFs
-// void FE_Mesh2D::assembleStiffnessMatrix()
-// {
-// 	std::vector<std::vector<double>> local_stiffness(p+1, std::vector<double>(p+1, 0)); // changes needed for hp-fem
-// 	std::vector<int> globalDoF(p+1);
-
-// 	for (int k=0; k<n; k++)
-// 	{
-// 		local_stiffness = elements[k].getLocalStiffness();
-// 		globalDoF = elements[k].local_DoF;
-// 		// handle DoF
-// 		for (int i=0; i<p+1; i++)
-// 		{
-// 			for (int j=0; j<p+1; j++)
-// 			{
-// 				stiffness(globalDoF[i], globalDoF[j]) += local_stiffness[i][j];
-// 			}
-// 		}
-// 	}
-// }
-
-// // find each element's local load and construct global load using each
-// // element's DoFs
-// void FE_Mesh2D::assembleLoadVector(double (*f)(double))
-// {
-// 	std::vector<double> local_load(p+1); // changes needed for hp-fem
-// 	std::vector<int> globalDoF(p+1);
-
-// 	for (int k=0; k<n; k++)
-// 	{
-// 		local_load = elements[k].getLocalLoad(f);
-// 		globalDoF = elements[k].local_DoF;
-// 		// handle DoF
-// 		for (int i=0; i<p+1; i++)
-// 		{
-// 			load[globalDoF.at(i]) += local_load[i];
-// 		}
-// 	}
-// }
-
-// // apply left and right boundary conditions
-// void FE_Mesh2D::applyBoundaryConditions(double u0, double u1, bool boundary_u0, bool boundary_u1)
-// {
-// 	if (boundary_u0)
-// 	{
-// 		for (int i=stiffness.row_start[0]; i<stiffness.row_start[1]; i++)
-// 		{
-// 			stiffness.entries[i] = 0.0;
-// 		}
-
-// 		for (int i=1; i<stiffness.col_no.size(); i++) // probably inefficient, revisit
-// 		{
-// 			if (stiffness.col_no[i] == 0)
-// 			{
-// 				stiffness.entries[i] = 0.0;
-// 			}
-// 		}
-
-// 		stiffness(0, 0) = 1.0;
-// 		load[0] = u0;
-// 	}
-
-// 	if (boundary_u1)
-// 	{
-// 		for (int i=stiffness.row_start[n]; i<stiffness.row_start[n+1]; i++)
-// 		{
-// 			stiffness.entries[i] = 0.0;
-// 		}
-
-// 		for (int i=0; i<stiffness.col_no.size(); i++) // probably inefficient, revisit
-// 		{
-// 			if (stiffness.col_no[i] == n)
-// 			{
-// 				stiffness.entries[i] = 0.0;
-// 			}
-// 		}
-
-// 		stiffness(n, n) = 1.0;
-// 		load[n] = u1;
-// 	}
-// }

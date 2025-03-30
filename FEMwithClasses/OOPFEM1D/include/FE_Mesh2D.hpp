@@ -3,12 +3,16 @@
 
 #include "FE_Mesh.hpp"
 #include "Point2D.hpp"
+#include <map>
 
 class FE_Mesh2D : public FE_Mesh
 {
 	public:
 		std::vector<Point2D> nodes;
-		std::vector<int> boundary_nodes;
+		std::vector<bool> is_boundary;
+		// edge DoFs
+		// map holds (v1, v2): list of DoF indicies
+		std::map<std::pair<int, int>, std::vector<int>> edge_dofs;
 
 		// constructors
 		FE_Mesh2D(int n, int p, int d);

@@ -70,7 +70,6 @@ void FE_Mesh1D::constructMesh(std::string filename)
 	}
 }
 
-// TODO: check implementation after 2D done
 // evaluate solution at x
 double FE_Mesh1D::evaluateSolution(std::vector<double> x, std::vector<double> solution)
 {

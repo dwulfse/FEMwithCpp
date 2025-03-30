@@ -27,17 +27,8 @@ void Solver::setupEigen()
 		}
 	}
 
-	// log triplets
-	// for (int i=0; i<triplets.size(); i++)
-	// {
-	// 	std::cout << "triplets[" << i << "] = (" << triplets[i].row() << ", " << triplets[i].col() << ", " << triplets[i].value() << ")" << std::endl;
-	// }
-
 	EigenA.setFromTriplets(triplets.begin(), triplets.end()); // problem for now
 	EigenA.makeCompressed();
-
-	std::cout << "Eigen compressed matrix: " << std::endl;
-	std::cout << EigenA << std::endl;
 
 	for (int i=0; i<noNodes; i++)
 	{

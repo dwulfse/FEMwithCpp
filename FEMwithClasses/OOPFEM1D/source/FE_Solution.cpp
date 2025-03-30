@@ -3,10 +3,13 @@
 #include "FE_Mesh2D.hpp"
 #include "GaussQuadrature.hpp"
 
+#include <iostream>
+
 // constructor
 FE_Solution::FE_Solution(int n, int p, int d)
  : n(n), globalStiffness(), p(p), d(d)
 {
+	// decide 1D or 2D mesh based on dimension
 	if (d == 1)
 	{
 		mesh = std::make_unique<FE_Mesh1D>(n, p, d);
@@ -27,12 +30,22 @@ FE_Solution::~FE_Solution()
 // controller function for whole program
 std::vector<double> FE_Solution::solve(double (*f)(const std::vector<double>&), std::string fileNameNoExt, double u0, double u1, bool boundary_u0, bool boundary_u1)
 {
+	// mesh initialied in constructor
+	// construct mesh from file if 2D, else construct based on n and p
 	mesh->constructMesh(d == 2 ? fileNameNoExt : "");
+	// allocate space for CSR stiffness matrix based on element DoFs
 	mesh->allocateStiffness();
+	// construct global stiffness matrix from local element stiffness matrices
 	mesh->assembleStiffnessMatrix();
+	// construct global load vector from local element load vectors
 	mesh->assembleLoadVector(f);
+	// apply boundary conditions,
+	// set left and right boundaries in 1D,
+	// or edge boundaries in 2D
 	mesh->applyBoundaryConditions(u0, u1, boundary_u0, boundary_u1);
 
+	// resize load and solution vectors based on number of nodes
+	// since noNodes != n in 2D
 	int noNodes = mesh->getNoNodes();
 	globalLoad.resize(noNodes);
 	solution.resize(noNodes);
@@ -41,6 +54,7 @@ std::vector<double> FE_Solution::solve(double (*f)(const std::vector<double>&), 
 	globalLoad = mesh->load;
 	n = mesh->n;
 
+	// create Solver object and solve system
 	Solver solver(n, p, globalStiffness, globalLoad, solution);
 
 	solver.setupEigen();
@@ -51,6 +65,7 @@ std::vector<double> FE_Solution::solve(double (*f)(const std::vector<double>&), 
 
 double FE_Solution::evaluateSolution(std::vector<double> x)
 {
+	// use mesh specific evaluation method
 	return mesh->evaluateSolution(x, solution);
 }
 

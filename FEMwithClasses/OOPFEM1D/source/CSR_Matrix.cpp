@@ -74,12 +74,12 @@ void CSRMatrix::print(bool sparcity)
             {
                 if (k < row_start[i+1] && col_no[k] == j)
                 {
-                    std::cout << entries[k] << " ";
+                    std::cout << entries[k] << "\t ";
                     k++;
                 }
                 else
                 {
-                    std::cout << 0 << " ";
+                    std::cout << 0 << "\t ";
                 }
             }
             std::cout << "\n";

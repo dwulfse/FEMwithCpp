@@ -2,36 +2,7 @@
 #include "GaussQuadrature2D.hpp"
 #include "Helper.hpp"
 #include <cmath>
-
-// helper functions
-double computeTriangleArea(const Point2D &P1, const Point2D &P2, const Point2D &P3)
-{
-	return 0.5 * fabs((P2.x - P1.x) * (P3.y - P1.y) - (P3.x - P1.x) * (P2.y - P1.y));
-}
-
-void computeAffineMatrix(const Point2D &P1, const Point2D &P2, const Point2D &P3, double A[2][2])
-{
-	A[0][0] = P2.x - P1.x;
-	A[0][1] = P3.x - P1.x;
-	A[1][0] = P2.y - P1.y;
-	A[1][1] = P3.y - P1.y;
-}
-
-bool invertAffineMatrix(double A[2][2], double A_inv[2][2])
-{
-	double det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
-	if (fabs(det) < 1e-12)
-	{
-		return false;
-	}
-
-	A_inv[0][0] = A[1][1] / det;
-	A_inv[0][1] = -A[0][1] / det;
-	A_inv[1][0] = -A[1][0] / det;
-	A_inv[1][1] = A[0][0] / det;
-
-	return true;
-}
+#include <iostream>
 
 // constructors
 Element2D::Element2D()
@@ -48,78 +19,86 @@ Element2D::~Element2D()
 {
 }
 
-std::vector<std::vector<double>> Element2D::getReferenceStiffness()
-{
-	// reference stiffness for triangle (-1, -1), (1, -1), (-1, 1)
-	// |T| = 2
-	// shape functions N_1 = -0.5x -0.5y, N_2 = 0.5x + 0.5, N_3 = 0.5y + 0.5
-	// grad N_1 = (-0.5, -0.5), grad N_2 = (0.5, 0), grad N_3 = (0, 0.5)
-	// K_ref_{ij} = |T| * (grad N_i . grad N_j)
-
-	double gradRef[3][2] = { 
-		{-0.5, -0.5},
-		{ 0.5,  0.0},
-		{ 0.0,  0.5}
-	};
-
-	std::vector<std::vector<double>> refStiffness(3, std::vector<double>(3, 0.0));
-
-	for (int i=0; i<3; i++)
-	{
-		for (int j=0; j<3; j++)
-		{
-			refStiffness[i][j] = 2.0 * (gradRef[i][0] * gradRef[j][0] + gradRef[i][1] * gradRef[j][1]);
-		}
-	}
-
-	return refStiffness;
-}
-
 std::vector<std::vector<double>> Element2D::getLocalStiffness()
 {
-	// find Jacobian of transforation to physsical triangle
+	// find degrees of freedom and allocate local stiffness matrix
+	int nDoF = (p+1) * (p+2) / 2;
+	std::vector<std::vector<double>> stiffness(nDoF, std::vector<double>(nDoF, 0.0));
+
+	// create quadrature
+	GaussQuadrature2D quad;
+	quad.assembleQuadrature(p+5);
+
+	// find affine transformation matrix and inverse
 	double A[2][2];
 	computeAffineMatrix(nodes[0], nodes[1], nodes[2], A);
-	double J = 0.5 * fabs(A[0][0] * A[1][1] - A[0][1] * A[1][0]);
-	
-	// get reference stiffness
-	std::vector<std::vector<double>> refStiffness = getReferenceStiffness();
+	double detA = fabs(A[0][0] * A[1][1] - A[0][1] * A[1][0]);
 
-	// transform reference stiffness to physical triangle
-	std::vector<std::vector<double>> stiffness(3, std::vector<double>(3, 0.0));
-	for (int i=0; i<3; i++)
+	double A_inv[2][2];
+	invertAffineMatrix(A, A_inv);
+
+	// compute local stiffness matrix, integrated by quadrature
+	for (int k=0; k<quad.points.size(); k++)
 	{
-		for (int j=0; j<3; j++)
+		std::vector<std::vector<double>> gradRef(nDoF, std::vector<double>(2, 0.0));
+		for (int i=0; i<nDoF; i++)
 		{
-			stiffness[i][j] = refStiffness[i][j] * J;
+			double gradRef_i[2] = {0.0, 0.0};
+			// evaluate ith basis function at quadrature point
+			poly.basis_2D_grad(i, quad.points[k].x, quad.points[k].y, gradRef_i);
+			gradRef[i][0] = gradRef_i[0];
+			gradRef[i][1] = gradRef_i[1];
+		}
+
+		// transform reference gradients to physical gradients
+		// grad_phys phi = A^{-T} grad_ref phi
+		std::vector<std::vector<double>> gradPhys(nDoF, std::vector<double>(2, 0.0));
+		for (int i=0; i<nDoF; i++)
+		{
+			gradPhys[i][0] = A_inv[0][0] * gradRef[i][0] + A_inv[1][0] * gradRef[i][1];
+			gradPhys[i][1] = A_inv[0][1] * gradRef[i][0] + A_inv[1][1] * gradRef[i][1];
+		}
+
+		for (int i=0; i<nDoF; i++)
+		{
+			for (int j=0; j<nDoF; j++)
+			{
+				// scaling factor is |T_phys| / |T_ref| = (detA / 2) / 2 = detJ / 4
+				stiffness[i][j] += (detA) * quad.weights[k] *
+						(gradPhys[i][0] * gradPhys[j][0] + gradPhys[i][1] * gradPhys[j][1]);
+			}
 		}
 	}
+
 	return stiffness;
 }
 
 std::vector<double> Element2D::getLocalLoad(double (*f)(const std::vector<double>&))
 {
-	std::vector<double> load(3, 0.0);
+	// find degrees of freedom and allocate local load vector
+	int nDoF = (p+1) * (p+2) / 2;
+	std::vector<double> load(nDoF, 0.0);
 
+	// create quadrature
 	GaussQuadrature2D quad;
-	quad.assembleQuadrature(3);
+	quad.assembleQuadrature(p+5);
 
-	double J = 0.5 * computeTriangleArea(nodes[0], nodes[1], nodes[2]);
+	// find affine transformation matrix and inverse
+	double A[2][2];
+	computeAffineMatrix(nodes[0], nodes[1], nodes[2], A);
+	double detA = fabs(A[0][0] * A[1][1] - A[0][1] * A[1][0]);
 
-	Point2D P = nodes[0], Q = nodes[1], R = nodes[2];
-
-	for (int k=0; k<3; k++)
+	// compute local load vector, integrated by quadrature
+	for (int k=0; k<quad.points.size(); k++)
 	{
-		Point2D point = mapToPhysical(P, Q, R, quad.points[k]);
-		double fx = f({point.x, point.y});	// FIXME: and y
+		Point2D point = mapToPhysical(nodes[0], nodes[1], nodes[2], quad.points[k]);
+		double fx = f({point.x, point.y});
 
-		load[0] += quad.weights[k] * fx * (-0.5 * quad.points[k].x - 0.5 * quad.points[k].y);
-		load[1] += quad.weights[k] * fx * (0.5 * quad.points[k].x + 0.5);
-		load[2] += quad.weights[k] * fx * (0.5 * quad.points[k].y + 0.5);
-	}
-	for (int i=0; i<3; i++)
-	{
-		load[i] *= J;
+		for (int i=0; i<nDoF; i++)
+		{
+			double phi = poly.basis_2D(i, quad.points[k].x, quad.points[k].y);
+			load[i] += (detA / 4.0) * quad.weights[k] * fx * phi;
+		}
 	}
 
 	return load;

@@ -23,7 +23,6 @@ class Element2D : public Element
 
 		// methods
 		// FIXME: get methods actually do caculation so revisit
-		virtual std::vector<std::vector<double>> getReferenceStiffness() override;
 		virtual std::vector<std::vector<double>> getLocalStiffness() override;
 		virtual std::vector<double> getLocalLoad(double (*f)(const std::vector<double>&)) override;
 };

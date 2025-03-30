@@ -27,7 +27,6 @@ class Element
 
 		// pure virtual methods
 		// FIXME: get methods actually do caculation so revisit
-		virtual std::vector<std::vector<double>> getReferenceStiffness() = 0;
 		virtual std::vector<std::vector<double>> getLocalStiffness() = 0;
 		virtual std::vector<double> getLocalLoad(double (*f)(const std::vector<double>&)) = 0;
 };

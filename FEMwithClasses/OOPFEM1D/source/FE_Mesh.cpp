@@ -11,8 +11,8 @@
 // non-zero entries will be
 void FE_Mesh::allocateStiffness()
 {
-	int no_nodes = getNoNodes();
-	std::vector<int> nnz_per_row(no_nodes, 0); // not so sure about p*n + 1 but its excess
+	int no_nodes = getNoNodes(); // was p*n + 1
+	std::vector<int> nnz_per_row(no_nodes, 0);
 	// std::vector<int> DoF(p+1); // hp-fem - change !!
 
 	for (int k=0; k<elements.size(); k++) // for each element
@@ -20,10 +20,12 @@ void FE_Mesh::allocateStiffness()
 		const std::vector<int>& DoF = elements[k]->local_DoF;
 		for (int j=0; j<DoF.size(); j++) // for each connection
 		{
+			// add no. of connections to nnz in this row
 			nnz_per_row[DoF[j]] += DoF.size();
 		}
 	}
 
+	// row_start is no. rows plus final OOB index
 	stiffness.row_start.resize(no_nodes + 1, 0);
 	for (int i=1; i<no_nodes + 1; i++) // for each node (row)
 	{
@@ -58,9 +60,6 @@ void FE_Mesh::allocateStiffness()
 			}
 		}
 	}
-
-	std::cout << "Stiffness matrix: " << std::endl;
-	stiffness.print(true);
 }
 
 // find each element's local stiffness and construct global stiffness using each
@@ -84,9 +83,6 @@ void FE_Mesh::assembleStiffnessMatrix()
 			}
 		}
 	}
-
-	std::cout << "Stiffness matrix: " << std::endl;
-	stiffness.print(false);
 }
 
 // find each element's local load and construct global load using each
@@ -94,8 +90,9 @@ void FE_Mesh::assembleStiffnessMatrix()
 void FE_Mesh::assembleLoadVector(double (*f)(const std::vector<double>&))
 {
 	int noLocalDoFs = d == 1 ? p+1 : (p+1)*(p+2)/2;
-	std::vector<double> local_load(noLocalDoFs); // changes needed for hp-fem
+	std::vector<double> local_load(noLocalDoFs);
 	std::vector<int> globalDoF(noLocalDoFs);
+	load.resize(getNoNodes(), 0.0);
 
 	for (int k=0; k<n; k++)
 	{
@@ -106,11 +103,5 @@ void FE_Mesh::assembleLoadVector(double (*f)(const std::vector<double>&))
 		{
 			load[globalDoF[i]] += local_load[i];
 		}
-	}
-
-	std::cout << "Load vector: " << std::endl;
-	for (int i=0; i<load.size(); i++)
-	{
-		std::cout << load[i] << std::endl;
 	}
 }
