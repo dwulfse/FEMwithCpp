@@ -30,27 +30,27 @@
       "args": [
         "-fdiagnostics-color=always",
         "-g",
-        "-I${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\include\\",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\CSR_Matrix.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Element.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Element1D.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Element2D.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Mesh.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Mesh1D.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Mesh2D.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\FE_Solution.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\GaussQuadrature.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\GaussQuadrature2D.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Helper.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Polynomial.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\PolynomialSpace.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\source\\Solver.cpp",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\main\\main.cpp",
+        "-I${workspaceFolder}\\include\\",
+        "${workspaceFolder}\\source\\CSR_Matrix.cpp",
+        "${workspaceFolder}\\source\\Element.cpp",
+        "${workspaceFolder}\\source\\Element1D.cpp",
+        "${workspaceFolder}\\source\\Element2D.cpp",
+        "${workspaceFolder}\\source\\FE_Mesh.cpp",
+        "${workspaceFolder}\\source\\FE_Mesh1D.cpp",
+        "${workspaceFolder}\\source\\FE_Mesh2D.cpp",
+        "${workspaceFolder}\\source\\FE_Solution.cpp",
+        "${workspaceFolder}\\source\\GaussQuadrature.cpp",
+        "${workspaceFolder}\\source\\GaussQuadrature2D.cpp",
+        "${workspaceFolder}\\source\\Helper.cpp",
+        "${workspaceFolder}\\source\\Polynomial.cpp",
+        "${workspaceFolder}\\source\\PolynomialSpace.cpp",
+        "${workspaceFolder}\\source\\Solver.cpp",
+        "${workspaceFolder}\\main\\main.cpp",
         "-o",
-        "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\FEM.out"
+        "${workspaceFolder}\\FEM.out"
       ],
       "options": {
-        "cwd": "${workspaceFolder}\\FEMwithClasses\\OOPFEM1D\\main"
+        "cwd": "${workspaceFolder}\\main"
       },
       "problemMatcher": [
         "$gcc"
