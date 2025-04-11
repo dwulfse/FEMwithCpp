@@ -3,3 +3,8 @@ errors.csv
 residuals.csv
 Eigen/
 Triangle/
+FEM_python.py
+integration.py
+# # output files
+# hp_errors.csv
+# solution.csv

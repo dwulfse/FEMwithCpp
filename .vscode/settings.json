@@ -113,7 +113,8 @@
     "sstream": "cpp",
     "stop_token": "cpp",
     "thread": "cpp",
-    "cstdarg": "cpp"
+    "cstdarg": "cpp",
+    "sparselu": "cpp"
   },
   "terminal.integrated.profiles.windows": {
     "MSYS2": {
